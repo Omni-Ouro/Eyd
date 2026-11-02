@@ -18,7 +18,8 @@ Sites that gate on EyD only admit agents that do.
 
 Built for the Meta Global AI Developer Hackathon (Oct 26 – Nov 4, 2026),
 Startup track. Design doc: [EYD_DESIGN.md](EYD_DESIGN.md). Proof format:
-[spec/PROOF_v0.md](spec/PROOF_v0.md). Build disclosure:
+[spec/PROOF_v0.md](spec/PROOF_v0.md). Market fit:
+[docs/market-fit.md](docs/market-fit.md). Build disclosure:
 [How this repo was built](#how-this-repo-was-built).
 
 Prerequisites: Python ≥ 3.11 (Node ≥ 18 only for the TypeScript
