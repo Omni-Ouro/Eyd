@@ -43,6 +43,8 @@ public keys are base64 of the 32-byte raw Ed25519 key.
 
 `{record_hash, agent_id, site_id, outcome, result_hash, ts, sig}` — `outcome` ∈ `fulfilled | declined`. `result_hash` is the hash of the canonical response body **before** transfer encoding; the site also returns it as the `EyD-Result-Hash` header.
 
+Optional on a `declined` report: `gate: {min_score, reason, since?}` — the site's signed statement of the gate that refused the action (threshold, refusal reason, and when the gate took effect if the site stamps it). A decline carrying a gate classifies **Gated**; a decline without one is a business refusal and classifies **Declined**.
+
 ## 4.4 Proof Receipt (clearinghouse-signed)
 
 `{record_hash, agent_id, site_id, classification, agent_hash, site_hash, ts, ch_sig}` — `site_id`/`site_hash` absent when Unverified. `ch_sig` signs the canonical-hash of the unsigned receipt. Verifiable offline against the clearinghouse pubkey.
@@ -58,12 +60,15 @@ Optional vector-two fields (§3.12): `expectation: {model, sketch, category}` �
 | `verb ≠ task_verb` (when the record carries a task) | **Deviated** |
 | Site `fulfilled` and `result_hash == output_hash` | **Expected** |
 | Both reported; hashes differ or statuses conflict | **Unexpected** |
-| Site `declined` | **Declined** |
+| Site `declined` with a `gate` block | **Gated** |
+| Site `declined` without one | **Declined** |
 | Window (10 min) closed with only one report | **Unverified** |
 
 Deviation outranks the pairing outcome: the agent did something other than the task it was given, whatever the site saw. A late report upgrades Unverified and reissues the receipt. `target: local` actions are always Unverified and never affect the score — except Deviated, which scores.
 
-**PoT score.** Base = Expected ÷ (Expected + Unexpected + Declined + Deviated) over the agent's last 100 classified receipts, or `null` with fewer than **5** scored receipts (N=5, v0 default, configurable). The ratio is weighted by corroboration — independent 1.0, same-integrator 0.5, same-operator 0.25 — because two reports from one operator are a single report signed twice; reported counts stay raw, and the 5-receipt gate is on the raw count. The score endpoint also breaks the same receipts down by verb, so a score's provenance is visible. **Streak penalty:** three consecutive Unexpected/Declined/Deviated receipts cap the effective score at 0.75 (`min(base, cap)`), pause the agent's AI Passport if it carries one, and notify the owner. Each subsequent Expected raises the cap by 0.008; the cap expires when it reaches base. One Expected resets the streak; Unverified neither counts nor resets. Unpausing (owner approval) removes the refusal, never the cap.
+**Gated receipts** carry the gate that said no: `gate: {min_score, reason, since?}` copied from the site's signed report (set by the receipt's `site_id`). "The site said no" is recorded apart from "the agent misbehaved": Gated is excluded from the score and neither trips nor resets the streak penalty — a site raising its gate cannot lower the score of an agent that keeps trying.
+
+**PoT score.** Base = Expected ÷ (Expected + Unexpected + Declined + Deviated) over the agent's last 100 classified receipts, or `null` with fewer than **5** scored receipts (N=5, v0 default, configurable). Gated and Unverified are excluded — neither is evidence about the agent. The ratio is weighted by corroboration — independent 1.0, same-integrator 0.5, same-operator 0.25 — because two reports from one operator are a single report signed twice; reported counts stay raw, and the 5-receipt gate is on the raw count. The score endpoint also breaks the same receipts down by verb, so a score's provenance is visible. **Streak penalty:** three consecutive Unexpected/Declined/Deviated receipts cap the effective score at 0.75 (`min(base, cap)`), pause the agent's AI Passport if it carries one, and notify the owner. Each subsequent Expected raises the cap by 0.008; the cap expires when it reaches base. One Expected resets the streak; Unverified neither counts nor resets. Unpausing (owner approval) removes the refusal, never the cap.
 
 ## 4.6 Attestation (challenge/response)
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 EXPECTED = "Expected"
 UNEXPECTED = "Unexpected"
 DECLINED = "Declined"
+GATED = "Gated"
 UNVERIFIED = "Unverified"
 DEVIATED = "Deviated"
 
@@ -14,7 +15,10 @@ SCORED_WINDOW = 100  # base score reads the last 100 classified receipts (§3.10
 def classify(agent_report: dict | None, site_report: dict | None) -> str:
     """Run when both reports are in, or when the window closes."""
     if site_report is not None and site_report.get("outcome") == "declined":
-        return DECLINED
+        # "The site said no" is not "the agent misbehaved". A refusal at
+        # the site's gate (carrying the gate block) is Gated: neutral.
+        # A decline without a gate is a business refusal: Declined.
+        return GATED if site_report.get("gate") else DECLINED
     if agent_report is not None and site_report is not None:
         if (
             site_report.get("outcome") == "fulfilled"
@@ -27,7 +31,7 @@ def classify(agent_report: dict | None, site_report: dict | None) -> str:
 
 def compute_score(classifications: list[str], min_receipts: int = MIN_RECEIPTS,
                   weights: list[float] | None = None) -> dict:
-    """Score counts exclude Unverified from the denominator (§3.10).
+    """Score counts exclude Unverified and Gated from the denominator (§3.10).
 
     `classifications` should already exclude `target: local` actions,
     which never affect the score. `weights`, when given, is parallel to
@@ -37,7 +41,7 @@ def compute_score(classifications: list[str], min_receipts: int = MIN_RECEIPTS,
     scored count — a score cannot be minted from almost nothing,
     however independent.
     """
-    counts = {EXPECTED: 0, UNEXPECTED: 0, DECLINED: 0, UNVERIFIED: 0, DEVIATED: 0}
+    counts = {EXPECTED: 0, UNEXPECTED: 0, DECLINED: 0, GATED: 0, UNVERIFIED: 0, DEVIATED: 0}
     for c in classifications:
         if c in counts:
             counts[c] += 1
@@ -58,6 +62,7 @@ def compute_score(classifications: list[str], min_receipts: int = MIN_RECEIPTS,
         "expected": counts[EXPECTED],
         "unexpected": counts[UNEXPECTED],
         "declined": counts[DECLINED],
+        "gated": counts[GATED],
         "unverified": counts[UNVERIFIED],
         "deviated": counts[DEVIATED],
         "total": total,

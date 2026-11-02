@@ -26,6 +26,7 @@ from fastapi.responses import JSONResponse, Response  # noqa: E402
 
 from eyd.canonical import hash_bytes  # noqa: E402
 from eyd.identity import Identity  # noqa: E402
+from eyd.records import utc_now  # noqa: E402
 from verifier import (  # noqa: E402
     EyDSite, REFUSAL_LOW, REFUSAL_PASSPORT_REVOKED, REFUSAL_PAUSED,
     REFUSAL_UNKNOWN,
@@ -104,18 +105,28 @@ def make_app(*, clearinghouse_url: str = "http://127.0.0.1:8787",
         # A session authenticates the agent; it does not carry the gate
         # decision from an earlier, possibly weaker, action. Check this
         # action's score and Passport standing on every gated request.
+        # Gate refusals carry the gate block: they classify Gated
+        # (neutral), never as agent misbehaviour.
+        def gate_block(reason: dict) -> dict:
+            block = {"min_score": gate["min_score"], "reason": reason["reason"]}
+            if gate.get("since"):
+                block["since"] = gate["since"]
+            return block
+
         if not site.score_allows(agent_id, gate["min_score"]):
             score = site.scores.get(agent_id)
             reason = REFUSAL_UNKNOWN if score is None else REFUSAL_LOW
             if record_hash_ and agent_id:
-                site.report(record_hash_, agent_id, "declined", _body_bytes(reason))
+                site.report(record_hash_, agent_id, "declined", _body_bytes(reason),
+                            gate=gate_block(reason))
             ledger(agent_id, action, f"refused: {reason['reason']}", None, record_hash_)
             return JSONResponse(reason, status_code=403)
         passport = site.passport_status(agent_id) if agent_id else "unknown"
         if passport in ("revoked", "paused"):
             reason = REFUSAL_PASSPORT_REVOKED if passport == "revoked" else REFUSAL_PAUSED
             if record_hash_:
-                site.report(record_hash_, agent_id, "declined", _body_bytes(reason))
+                site.report(record_hash_, agent_id, "declined", _body_bytes(reason),
+                            gate=gate_block(reason))
             ledger(agent_id, action, f"refused: {reason['reason']}", None, record_hash_)
             return JSONResponse(reason, status_code=403)
 
@@ -143,6 +154,7 @@ def make_app(*, clearinghouse_url: str = "http://127.0.0.1:8787",
             gate["eyd_required"] = bool(payload["eyd_required"])
         if "min_score" in payload:
             gate["min_score"] = payload["min_score"]  # float 0..1, or null = any
+            gate["since"] = utc_now()  # the gate block stamps when it changed
         return {"gates": app.state.gates, "tamper": site.tamper}
 
     @app.post("/tamper")

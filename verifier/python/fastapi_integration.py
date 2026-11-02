@@ -9,8 +9,10 @@
         return {"status": "paid"}
 
 The decorator runs the §4.6 challenge/attestation handshake, sessions,
-the per-action PoT score gate, and Passport standing; reports refusals
-as Declined and the fulfilled result after the handler answers. The
+the per-action PoT score gate, and Passport standing; reports gate
+refusals with the gate block (they classify Gated — neutral, not a
+mark against the agent) and the fulfilled result after the handler
+answers. The
 handler keeps its normal FastAPI signature and returns a dict; the
 admitted agent's id is on `request.state.eyd_agent`.
 
@@ -49,7 +51,7 @@ def _body_bytes(body: dict) -> bytes:
 
 
 def gated(site, *, min_score=None, eyd_required=True, on_event=None,
-          info_url=None, expectation_match=None):
+          info_url=None, expectation_match=None, gate_since=None):
     """Decorate a FastAPI endpoint with the EyD gate.
 
     on_event(agent_id, action_name, result), if given, fires on every
@@ -61,6 +63,9 @@ def gated(site, *, min_score=None, eyd_required=True, on_event=None,
     (vector two) that fulfilled results match the Clearing House's
     pre-registered model expectation for the action. Leave unset if
     the site does not judge its results against the sketch.
+    gate_since, if given, stamps when this gate took effect; it rides
+    the signed gate block on refusals so a Gated receipt shows which
+    threshold, set by whom (this site), since when.
     """
     def decorator(fn):
         @functools.wraps(fn)
@@ -74,8 +79,13 @@ def gated(site, *, min_score=None, eyd_required=True, on_event=None,
 
             def refuse(reason: dict, challenge: bool = False) -> JSONResponse:
                 if record_hash_ and agent_id:
+                    # Every refusal here is this gate's decision, so the
+                    # signed report carries the gate that made it.
+                    gate = {"min_score": min_score, "reason": reason["reason"]}
+                    if gate_since:
+                        gate["since"] = gate_since
                     site.report(record_hash_, agent_id, "declined",
-                                _body_bytes(reason))
+                                _body_bytes(reason), gate=gate)
                 event(f"refused: {reason['reason']}")
                 headers = {}
                 if challenge:

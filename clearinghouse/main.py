@@ -108,6 +108,8 @@ receipts: dict[str, dict] = {}  # record_hash -> receipt
 expectation_store: dict[str, dict] = {}
 passports: dict[str, dict] = {}  # agent_id -> {passport, subject, checked outcome}
 # Streak penalty (§3.10): agent_id -> {streak, cap, paused, notification}
+# Gated is absent on purpose: a site raising its gate is not agent
+# misbehaviour — Gated receipts neither trip nor reset a streak.
 penalties: dict[str, dict] = {}
 BAD_CLASSES = ("Unexpected", "Declined", "Deviated")
 # Corroboration: how independently the two reporters are operated.
@@ -288,6 +290,16 @@ def issue_receipt(record_hash_: str) -> dict | None:
         receipt["corroboration"] = _corroboration(agent_id, site_rep["site_id"])
         if site_rep.get("expectation_match") is not None:
             receipt["expectation_match"] = bool(site_rep["expectation_match"])
+        if classification == "Gated" and site_rep.get("gate"):
+            # The gate that said no rides the receipt: which threshold,
+            # which reason — set by the receipt's site_id, since when
+            # if the site stamps it. The lender's decision, recorded
+            # apart from the agent's behaviour.
+            gate = site_rep["gate"]
+            receipt["gate"] = {"min_score": gate.get("min_score"),
+                                "reason": gate.get("reason")}
+            if gate.get("since"):
+                receipt["gate"]["since"] = gate["since"]
     # Vector two: the pre-registered model expectation, bound into the
     # signed receipt. Annotation only — classification is already set.
     exp = expectation_store.get(record_hash_)
@@ -516,7 +528,7 @@ def agent_score(agent_id: str):
     verbs: dict[str, dict] = {}
     for cls, _w, verb in rows:
         v = verbs.setdefault(verb, {"expected": 0, "unexpected": 0, "declined": 0,
-                                    "unverified": 0, "deviated": 0})
+                                    "gated": 0, "unverified": 0, "deviated": 0})
         v[cls.lower()] += 1
     for v in verbs.values():
         v["scored"] = v["expected"] + v["unexpected"] + v["declined"] + v["deviated"]

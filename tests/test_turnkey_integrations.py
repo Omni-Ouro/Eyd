@@ -28,8 +28,8 @@ def _app_with_gate():
                    public_clearinghouse_url="https://ch.example.com")
     site.passport_status = lambda agent_id: "valid"
     reports = []
-    site.report = lambda rh, aid, outcome, result: reports.append(
-        (rh, aid, outcome)) or {"classification": "Expected"}
+    site.report = lambda rh, aid, outcome, result, **kw: reports.append(
+        (rh, aid, outcome, kw.get("gate"))) or {"classification": "Expected"}
     app.state.site = site
     app.state.reports = reports
 

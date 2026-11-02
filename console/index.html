@@ -41,6 +41,7 @@
   .badge { display:inline-block; padding:1px 9px; border-radius:99px; color:#fff; font-size:12px; font-weight:600; }
   .b-Expected { background:var(--green); } .b-Unexpected { background:var(--amber); }
   .b-Declined { background:var(--red); } .b-Unverified { background:var(--gray); }
+  .b-Gated { background:var(--gray); }
   .b-Deviated { background:#7c3aed; }
   .notify { background:#fdf3e3; border:1px solid var(--amber); color:#7c4a03;
             border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:13px; }
@@ -160,7 +161,7 @@ function renderDetail() {
     <dt>enrolled</dt><dd>${a.enrolled_at || "—"}</dd>
     <dt>PoT score</dt><dd>${a.score == null ? "unknown" : a.score.toFixed(3)}${a.cap != null ? ` <span style="color:var(--mut)">(base ${a.base?.toFixed(3)}, capped at ${a.cap.toFixed(2)} — streak ${a.streak})</span>` : ""}</dd>
     <dt>receipts</dt><dd>${a.total == null ? "—" :
-      `Expected ${a.expected} · Unexpected ${a.unexpected} · Declined ${a.declined} · Deviated ${a.deviated ?? 0} · Unverified ${a.unverified}`}</dd>
+      `Expected ${a.expected} · Unexpected ${a.unexpected} · Declined ${a.declined} · Gated ${a.gated ?? 0} · Deviated ${a.deviated ?? 0} · Unverified ${a.unverified}`}</dd>
     <dt>score from</dt><dd>${a.total == null || !a.verbs ? "—" :
       Object.entries(a.verbs).map(([v, c]) =>
         `${esc(v)}: ${c.expected}/${c.scored} expected`).join(" · ")}</dd>

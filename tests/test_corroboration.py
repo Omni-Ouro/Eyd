@@ -108,7 +108,7 @@ def test_score_shows_verb_breakdown():
 
     score = client.get(f"/agents/{agent.id}/score").json()
     assert score["verbs"]["pay"] == {"expected": 5, "unexpected": 0,
-                                     "declined": 0, "unverified": 0,
+                                     "declined": 0, "gated": 0, "unverified": 0,
                                      "deviated": 0, "scored": 5, "score": 1.0}
     assert score["verbs"]["browse"]["expected"] == 3
     assert score["verbs"]["browse"]["score"] == 1.0

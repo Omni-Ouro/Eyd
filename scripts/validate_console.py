@@ -69,14 +69,21 @@ def main() -> int:
     status, cls, _ = act("E", "quote")
     check("E quote admitted", status == 200 and cls == "Expected", f"{status} {cls}")
     status, cls, body = act("E", "pay")
-    check("E pay Declined (score unknown)", status == 403 and cls == "Declined"
+    check("E pay Gated (score unknown)", status == 403 and cls == "Gated"
           and "PoT score unknown" in body, f"{status} {cls}")
+    # Gated is neutral: retrying against a raised gate must not move
+    # the score or start a streak (Moreno's split).
+    e_before = agent("E")["score"]
+    status, cls, _ = act("E", "pay")
+    e_after = agent("E")["score"]
+    check("Gated retry score-neutral", status == 403 and cls == "Gated"
+          and e_before == e_after, f"{e_before} -> {e_after}")
 
     check("attach passport to B", passport("B", "attach")["passport_status"] == "valid")
     check("B chip updates", agent("B")["chip"] == "EyD + Passport")
     passport("B", "revoke")
     status, cls, body = act("B", "quote")
-    check("B quote refused while revoked", status == 403 and cls == "Declined"
+    check("B quote refused while revoked", status == 403 and cls == "Gated"
           and "AI Passport revoked" in body, f"{status} {cls}")
     passport("B", "reinstate")
     status, cls, _ = act("B", "quote")
@@ -115,7 +122,7 @@ def main() -> int:
           and bool(f["notification"]), f'{f["chip"]}')
     call("POST", "/api/gates", {"action": "search", "eyd_required": True})
     status, cls, body = act("F", "search")
-    check("F search refused while paused", status == 403 and cls == "Declined"
+    check("F search refused while paused", status == 403 and cls == "Gated"
           and "Passport paused" in body, f"{status} {cls}")
     call("POST", "/api/gates", {"action": "search", "eyd_required": False})
     check("approve lifts pause", passport("F", "approve")["passport_status"] == "valid")

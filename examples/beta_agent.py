@@ -108,7 +108,7 @@ def main() -> int:
 
     _, score, _ = request_json("GET", f"{args.clearinghouse}/agents/{eyd.identity.id}/score")
     print(f"\nPoT score now: {score.get('score')} "
-          f"({score.get('expected')} Expected / {score.get('declined')} Declined"
+          f"({score.get('expected')} Expected / {score.get('gated')} Gated"
           f" of {score.get('total')} receipts). Your agent is enrolled at the "
           f"Clearing House — run this again and it starts from this score.")
     return 0

@@ -118,6 +118,27 @@ test("site report: Python signature verifies", () => {
   assert.equal(ok, true);
 });
 
+test("site report: gate block rides along, signed (classifies Gated)", () => {
+  const identity = Identity.fromSeed(
+    Buffer.from(fixtures.site.seed_b64, "base64"), "site");
+  const gate = { min_score: 0.8, reason: "PoT score below threshold" };
+  const report = buildSiteReport(identity, {
+    recordHash: "sha256:" + "a".repeat(64),
+    agentId: fixtures.agent.id,
+    outcome: "declined",
+    result: Buffer.from("refused"),
+    gate,
+  });
+  assert.deepEqual(report.gate, gate);
+  const unsigned = { ...report };
+  delete unsigned.sig;
+  assert.ok(verifyB64(
+    Buffer.from(fixtures.site.pubkey_b64, "base64"),
+    Buffer.from(recordHash(unsigned), "utf-8"),
+    report.sig as string,
+  ));
+});
+
 test("site report: expectation_match rides along, signed", () => {
   const site = Identity.fromSeed(
     Buffer.from(fixtures.site.seed_b64, "base64"), "site");

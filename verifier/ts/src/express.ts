@@ -37,6 +37,10 @@ export interface EyDGateOptions {
    *  results match the Clearing House's pre-registered model
    *  expectation. Leave unset if the site does not judge results. */
   expectationMatch?: boolean;
+  /** When this gate took effect (ISO ts); rides the signed gate block
+   *  on refusals so a Gated receipt shows which threshold, set by
+   *  whom (this site), since when. */
+  gateSince?: string;
 }
 
 export interface EyDRequestLike {
@@ -73,8 +77,15 @@ export function eydGate(site: EyDSite, opts: EyDGateOptions = {}) {
 
     const refuse = async (reason: Record<string, string>, challenge = false) => {
       if (recordHash && agentId) {
+        // Every refusal here is this gate's decision, so the signed
+        // report carries the gate that made it (classifies Gated).
+        const gate: Record<string, unknown> = {
+          min_score: minScore, reason: reason.reason,
+        };
+        if (opts.gateSince) gate.since = opts.gateSince;
         await site
-          .report(recordHash, agentId, "declined", Buffer.from(JSON.stringify(reason)))
+          .report(recordHash, agentId, "declined",
+                  Buffer.from(JSON.stringify(reason)), null, gate)
           .catch(() => {});
       }
       opts.onEvent?.(agentId, `refused: ${reason.reason}`);

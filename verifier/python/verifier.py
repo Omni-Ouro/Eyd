@@ -73,7 +73,8 @@ def verify_attestation(att: dict, expected_nonce: str, pubkey_raw: bytes,
 
 def build_site_report(identity: Identity, *, record_hash_: str, agent_id: str,
                       outcome: str, result: bytes | str | dict | None,
-                      expectation_match: bool | None = None) -> dict:
+                      expectation_match: bool | None = None,
+                      gate: dict | None = None) -> dict:
     if outcome not in ("fulfilled", "declined"):
         raise ValueError("outcome must be fulfilled|declined")
     if isinstance(result, bytes):
@@ -92,6 +93,12 @@ def build_site_report(identity: Identity, *, record_hash_: str, agent_id: str,
         # Vector two: the site's signed attestation that its result
         # matched the Clearing House's pre-registered model expectation.
         report["expectation_match"] = bool(expectation_match)
+    if gate is not None:
+        # A refusal at this site's gate, signed: {min_score, reason,
+        # since?}. The Clearing House classifies it Gated — neutral —
+        # and binds the gate into the receipt. A decline without a
+        # gate block is a business refusal and classifies Declined.
+        report["gate"] = gate
     report["sig"] = identity.sign(record_hash(report).encode())
     return report
 
@@ -223,10 +230,11 @@ class EyDSite:
 
     def report(self, record_hash_: str, agent_id: str, outcome: str,
                result: bytes | str | dict,
-               expectation_match: bool | None = None) -> dict | None:
+               expectation_match: bool | None = None,
+               gate: dict | None = None) -> dict | None:
         report = build_site_report(self.identity, record_hash_=record_hash_,
                                    agent_id=agent_id, outcome=outcome, result=result,
-                                   expectation_match=expectation_match)
+                                   expectation_match=expectation_match, gate=gate)
         status, body = _request_json(
             "POST", f"{self.clearinghouse_url}/reports/site", report)
         receipt = (body or {}).get("receipt")

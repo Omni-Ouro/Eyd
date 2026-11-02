@@ -93,6 +93,7 @@ export function buildSiteReport(
     outcome: "fulfilled" | "declined";
     result: Buffer | string | Record<string, unknown> | null;
     expectationMatch?: boolean | null;
+    gate?: Record<string, unknown> | null;
   },
 ): Record<string, unknown> {
   if (opts.outcome !== "fulfilled" && opts.outcome !== "declined") {
@@ -115,6 +116,12 @@ export function buildSiteReport(
     // Vector two: the site's signed attestation that its result
     // matched the Clearing House's pre-registered model expectation.
     report.expectation_match = Boolean(opts.expectationMatch);
+  }
+  if (opts.gate !== undefined && opts.gate !== null) {
+    // A refusal at this site's gate, signed: {min_score, reason,
+    // since?}. Classifies Gated (neutral) at the Clearing House and
+    // binds into the receipt; a decline without it is Declined.
+    report.gate = opts.gate;
   }
   report.sig = identity.sign(Buffer.from(recordHash(report), "utf-8"));
   return report;
@@ -289,6 +296,7 @@ export class EyDSite {
     outcome: "fulfilled" | "declined",
     result: Buffer | string | Record<string, unknown>,
     expectationMatch?: boolean | null,
+    gate?: Record<string, unknown> | null,
   ): Promise<any | null> {
     const report = buildSiteReport(this.identity, {
       recordHash: recordHash_,
@@ -296,6 +304,7 @@ export class EyDSite {
       outcome,
       result,
       expectationMatch,
+      gate,
     });
     const { body } = await requestJson(
       "POST",

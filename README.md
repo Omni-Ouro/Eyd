@@ -12,7 +12,7 @@ it, and it sits in the tool-call path: every call the agent makes is
 signed under the agent's own Ed25519 key and reported to a
 clearinghouse before it goes out. The counterparty site reports its
 side after. The clearinghouse pairs the two, classifies the result
-(Expected, Unexpected, Declined, Unverified, Deviated), and issues a signed Proof
+(Expected, Unexpected, Declined, Gated, Unverified, Deviated), and issues a signed Proof
 Receipt to both parties. Agents that don't route through EyD get no receipt.
 Sites that gate on EyD only admit agents that do.
 
@@ -58,7 +58,7 @@ site = EyDSite(identity, clearinghouse_url="https://clearinghouse.omni-ouro.com"
 site.enroll()
 
 @app.post("/meeting")
-@gated(site, min_score=0.8)   # EyD + PoT >= 0.8, or a refusal + Declined receipt
+@gated(site, min_score=0.8)   # EyD + PoT >= 0.8, or a refusal + Gated receipt
 async def meeting(request: Request):
     return {"status": "recorded"}   # the decorator reports it fulfilled
 ```
@@ -97,7 +97,10 @@ is present and the TS package is built:
   canonicalization (RFC 8785) + test vectors, attestation.
 - **AI Passport interoperability** (`passport-interop/`, [AI_PASSPORT.md](AI_PASSPORT.md)) — the clearinghouse also reads ServiceNow AI Passports as an identity credential alongside EyD (Passport alone never suffices by default; Passport + EyD is the combined tier). ServiceNow's published test vectors pass against our check unmodified: verifier 81/81, caller 74/74.
 - **EyD Clearing House** (`clearinghouse/`) — single-node pairing,
-  classification, receipts, PoT score, fork detection. The same code
+  classification, receipts, PoT score, fork detection. Gate refusals
+  classify **Gated** — score- and streak-neutral, with the gate itself
+  (threshold, reason, since when) bound into the receipt — apart from
+  **Declined**, a business refusal that counts. The same code
   runs locally and as the hosted beta (see Deploy).
 - **Model expectation (vector two, advisory)** — at intent time the
   Clearing House asks a model, from the declared action alone (verb,

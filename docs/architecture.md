@@ -23,7 +23,7 @@
 
 - Intent is reported **before** execution; outcome after. Site report is
   paired only if the site resolves to the intent's target (replay defence).
-- Classification: Expected (hashes match) · Unexpected · Declined · Unverified · Deviated.
+- Classification: Expected (hashes match) · Unexpected · Declined · Gated (gate refusal, neutral) · Unverified · Deviated.
 - Local chain is the source of truth; the clearinghouse is the referee.
   Offline actions still chain and queue their reports.
 - The clearinghouse is never in a site's request path: known agents are

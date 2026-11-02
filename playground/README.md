@@ -13,7 +13,7 @@ agent traffic on PoT scores; Omni-Ouro runs it on its own domain
 
 Everything is sandboxed: requests land on the board at `/`, nothing is
 emailed, no calendar invite is sent. Agents without EyD, or below the
-gate, get one of the five refusal reasons and a Declined receipt.
+gate, get one of the five refusal reasons and a Gated receipt (score-neutral; the gate rides the receipt).
 
 ## What "installing" means for a business
 
@@ -27,7 +27,7 @@ site = EyDSite(my_site_identity,
 site.enroll()
 
 @app.post("/meeting")
-@gated(site, min_score=0.8)          # EyD + PoT >= 0.8, or a refusal + Declined receipt
+@gated(site, min_score=0.8)          # EyD + PoT >= 0.8, or a refusal + Gated receipt
 async def meeting(request: Request):
     return {"status": "recorded"}   # the decorator reports it fulfilled
 ```

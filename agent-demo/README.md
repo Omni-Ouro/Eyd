@@ -32,5 +32,5 @@ pause its Passport, and raise the owner notification on its console card.
 
 Validated live 2026-10-28 through the judge console: A pays → refused
 ("PoT score unknown", no receipt) even after a boost attempt; B pays →
-Declined at PoT ≥ 0.8, Expected when the site lowers its gate; C quotes →
+Gated at PoT ≥ 0.8, Expected when the site lowers its gate; C quotes →
 Expected, and Unexpected with the tamper toggle on.

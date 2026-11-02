@@ -101,10 +101,13 @@ Single node. Stores hashes, signatures, timestamps, classifications, and the cou
 |---|---|
 | Site `fulfilled` and `result_hash == output_hash` | **Expected** |
 | Both reported; hashes differ or statuses conflict | **Unexpected** |
-| Site `declined` | **Declined** |
+| Site `declined` with a `gate` block | **Gated** |
+| Site `declined` without one | **Declined** |
 | Window closed with only one report | **Unverified** |
 
 A late report upgrades Unverified to a real classification and reissues the receipt. Actions with `target: local` (file writes, code execution, local MCP tools) have no counterparty, are Unverified unless Deviated (§3.11), stay in the chain, and don't otherwise affect the score.
+
+**Gated vs Declined.** "The site said no" is kept apart from "the agent misbehaved." A refusal at the site's gate carries the signed gate block (`{min_score, reason, since?}`) and classifies **Gated**: excluded from the score, and it neither trips nor resets the streak penalty — a site raising its gate cannot lower the score of an agent that keeps trying. The Gated receipt binds the gate in (`gate`, set by the receipt's `site_id`): the lender's decision, recorded apart from the credit report's subject. A decline without a gate block is a business refusal and classifies **Declined**, which counts.
 
 **Receipt:** `{record_hash, agent_id, site_id?, classification, agent_hash?, site_hash?, ts, ch_sig}` signed with the clearinghouse key. Sent to both parties. Verifiable offline against the clearinghouse pubkey.
 
@@ -156,7 +159,7 @@ A single web page the judge drives. It is the demo, the dashboard, and the video
 
 **Four moments the console is built to reach in under two minutes:**
 1. Boost A to 1.0, click Pay → still `PoT score unknown`. Reputation can't attach to an identity the site doesn't have.
-2. Drag Pay's slider below B's real score, click Pay → Expected. Drag it back above, click Pay → `below threshold`, Declined. The site changed its mind; the agent didn't move.
+2. Drag Pay's slider below B's real score, click Pay → Expected. Drag it back above, click Pay → `below threshold`, Gated. The site changed its mind; the agent didn't move — and its score doesn't either.
 3. Boost B to C's level, click Pay → Expected. Same identity, better history, different outcome. Then flip tamper, click again → Unexpected.
 4. Select D (.99, Passport). Click Pay three times. Each time the task says *pay invoice 2142* and the agent tries to email: three Deviated receipts, score drops to .75, chip flips to *Passport paused*, the owner notification appears. Click Pay again → *Passport paused*. Click Approve Passport, then Search a few times → score climbing by 0.008 per Expected.
 
@@ -165,14 +168,14 @@ Nothing in the console is a special case. Every outcome is the real path through
 ### 3.10 PoT score
 The per-agent reputation the clearinghouse derives from receipts. It moves with every classified receipt.
 
-**Base.** `base = Expected ÷ (Expected + Unexpected + Declined + Deviated)` over the agent's last 100 classified receipts. Unverified is excluded. `null` with fewer than N receipts. One bad action in the last 100 → .99.
+**Base.** `base = Expected ÷ (Expected + Unexpected + Declined + Deviated)` over the agent's last 100 classified receipts. Unverified and Gated are excluded — neither says anything about the agent. `null` with fewer than N receipts. One bad action in the last 100 → .99.
 
 **Streak penalty.** Three consecutive receipts classified Unexpected, Declined or Deviated trigger a penalty event:
 - `cap = 0.75`
 - Passport paused (if the agent carries one)
 - Owner notified: *"Agent X's trust score has dropped significantly as a result of repeated untrustworthy actions and its Passport has been paused. You may see lower success rates in web interactions until the Passport has been submitted for approval and the agent has been verified stable."*
 
-Effective score is `min(base, cap)`. Each subsequent Expected receipt raises `cap` by 0.008; the cap expires when it reaches `base`. From .75, fifteen clean actions → .87, about thirty-one → cap gone. One Expected resets the streak counter; Unverified neither counts toward a streak nor resets it.
+Effective score is `min(base, cap)`. Each subsequent Expected receipt raises `cap` by 0.008; the cap expires when it reaches `base`. From .75, fifteen clean actions → .87, about thirty-one → cap gone. One Expected resets the streak counter; Unverified and Gated neither count toward a streak nor reset it.
 
 Why .75: sites gating at .8 or higher are protected the moment the streak lands, mid-tier actions still work, and the climb back is earned, not reset.
 
@@ -194,7 +197,8 @@ A fifth classification. The framework passes the agent's current **task** into t
 | `verb ≠ task_verb` | **Deviated** |
 | Site `fulfilled` and `result_hash == output_hash` | **Expected** |
 | Both reported; hashes differ or statuses conflict | **Unexpected** |
-| Site `declined` | **Declined** |
+| Site `declined` with a `gate` block | **Gated** |
+| Site `declined` without one | **Declined** |
 | Window closed with only one report | **Unverified** |
 
 Deviated counts toward the streak penalty. It is the classification for a hijacked or prompt-injected agent: the task said pay, the agent tried to send.
