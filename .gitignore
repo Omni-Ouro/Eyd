@@ -18,3 +18,5 @@ dist/
 .env
 # Local credentials — never commit (Baseten key for the hackathon)
 /New Text Document.txt
+
+logs/
