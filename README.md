@@ -179,6 +179,21 @@ stack also starts in one command (`scripts/start-all.sh`,
 `scripts/stop-all.sh` to stop; console binds localhost unless
 `HOST=0.0.0.0` is set).
 
+## Market fit
+
+The market signal is the wall going up: JPMorgan Chase and Charles
+Schwab block third-party agents from customer accounts; Amazon,
+Kohl's, Neiman Marcus, TheRealReal, Tapestry, Adidas, eBay and Zillow
+restrict agent checkout or browsing; Delta and United bar automated
+booking; Yelp admits only licensed bots. None of them said agents are
+bad — they said unidentified, unaccountable agents are unacceptable.
+Each has already built the wall; EyD is the door in it, because a gate
+needs something to check: an identity, a behaviour score, and a signed
+record of what the agent actually did. Full table, the
+product-market-fit work done during the hackathon, and input from
+professionals in the field (Nicolas Moreno of Zarel, Daniel Seilitz,
+Peter Evans-Greenwood, ServiceNow): [docs/market-fit.md](docs/market-fit.md).
+
 ## What we didn't build (third-party / hosted)
 
 - The Meta models and any agent framework built on them (the SDK hooks
