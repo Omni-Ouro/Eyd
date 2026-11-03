@@ -78,11 +78,17 @@ def make_app(*, clearinghouse_url: str = "http://127.0.0.1:8787",
     app = FastAPI(title=f"{COMPANY} — EyD playground")
     app.state.site = site
     app.state.requests: list[dict] = []
+    # Dashboard-adjustable gates: copied so runtime changes never touch
+    # the module defaults, and stamped when they change (the stamp is
+    # what rides Gated receipts as the gate's `since`).
+    from eyd.records import utc_now as _now
+    app.state.gates = {k: {**v, "since": _now()} for k, v in GATES.items()}
 
-    def board(agent, action, result):
+    def board(agent, action, result, record_hash=None):
         from eyd.records import utc_now
         app.state.requests.append(
-            {"ts": utc_now(), "agent": agent, "action": action, "result": result})
+            {"ts": utc_now(), "agent": agent, "action": action,
+             "result": result, "record_hash": record_hash})
 
     # The whole gate — attestation, per-action score check, Passport
     # standing, reporting — is the verifier SDK's @gated decorator.
@@ -124,12 +130,58 @@ Clearinghouse: <code>{site.clearinghouse_url}</code></p>
               f"revocation notice: {dropped} session(s) dropped")
         return {"dropped_sessions": dropped}
 
-    @app.get("/dashboard")
-    def dashboard():
+    @app.get("/dashboard/data")
+    def dashboard_data(agent: str | None = None):
+        """Everything the business dashboard shows: current gates, this
+        site's request list (filterable by agent), each request joined
+        to the receipt the Clearing House issued for it, and — for one
+        agent — that agent's full receipt history at the Clearing
+        House, this site and every other."""
+        # Join against the Clearing House's receipts, not just the ones
+        # this process happened to see issued: a site report often
+        # lands before the agent's report, so the receipt is minted
+        # after our report() returned.
+        by_hash = {r.get("record_hash"): r for r in site.receipts}
+        for r in site.clearinghouse_receipts():
+            if r.get("site_id") == site_identity.id:
+                by_hash[r.get("record_hash")] = r
+        rows = []
+        for req in app.state.requests:
+            if agent and req.get("agent") != agent:
+                continue
+            receipt = by_hash.get(req.get("record_hash") or "")
+            rows.append({**req,
+                         "classification": (receipt or {}).get("classification"),
+                         "receipt": receipt})
+        history = None
+        if agent:
+            history = site.clearinghouse_receipts(agent)
         return {"company": COMPANY, "site_id": site_identity.id,
-                "clearinghouse": site.clearinghouse_url, "gates": GATES,
-                "requests": app.state.requests, "receipts": site.receipts,
+                "clearinghouse": site.clearinghouse_url,
+                "gates": app.state.gates, "requests": rows,
+                "agent_history": history,
                 "scores_seen": site.scores}
+
+    @app.post("/dashboard/gates")
+    async def dashboard_gates(request: Request):
+        """Adjust a gate at runtime: the next request is checked
+        against the new value, and Gated receipts stamp the change."""
+        payload = await _json_body(request)
+        action = payload.get("action")
+        if action not in app.state.gates:
+            return {"error": "unknown action"}
+        gate = app.state.gates[action]
+        if "min_score" in payload:
+            gate["min_score"] = payload["min_score"]  # float 0..1, null = any
+        if "eyd_required" in payload:
+            gate["eyd_required"] = bool(payload["eyd_required"])
+        from eyd.records import utc_now
+        gate["since"] = utc_now()
+        return {"gates": app.state.gates}
+
+    @app.get("/dashboard", response_class=HTMLResponse)
+    def dashboard():
+        return _DASHBOARD_HTML.replace("__SITE__", site_identity.id)
 
     # Fulfilled playground results are fixed-shape confirmations, so
     # the site honestly attests they match the model expectation
@@ -141,14 +193,16 @@ Clearinghouse: <code>{site.clearinghouse_url}</code></p>
         return _action_body("search", {"need": q})
 
     @app.post("/deck")
-    @gated(site, min_score=None, on_event=board, info_url=callback_url,
-           expectation_match=True)
+    @gated(site, min_score=lambda: app.state.gates["deck"]["min_score"],
+           on_event=board, info_url=callback_url, expectation_match=True,
+           gate_since=lambda: app.state.gates["deck"]["since"])
     async def deck(request: Request):
         return _action_body("deck", await _json_body(request))
 
     @app.post("/meeting")
-    @gated(site, min_score=0.8, on_event=board, info_url=callback_url,
-           expectation_match=True)
+    @gated(site, min_score=lambda: app.state.gates["meeting"]["min_score"],
+           on_event=board, info_url=callback_url, expectation_match=True,
+           gate_since=lambda: app.state.gates["meeting"]["since"])
     async def meeting(request: Request):
         return _action_body("meeting", await _json_body(request))
 
@@ -177,6 +231,60 @@ async def _json_body(request: Request) -> dict:
         return json.loads(await request.body() or b"{}")
     except Exception:
         return {}
+
+
+_DASHBOARD_HTML = """<!doctype html>
+<html><head><meta charset="utf-8"><title>Omni-Ouro — EyD business dashboard</title>
+<style>body{font-family:system-ui,sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem}
+table{border-collapse:collapse;width:100%;margin:.5rem 0 1.5rem}td,th{border-bottom:1px solid #ddd;padding:.3rem .5rem;text-align:left;vertical-align:top}
+code,pre{background:#f2f2f2;padding:.1rem .3rem}pre{padding:.6rem;overflow:auto;max-width:520px}
+input{padding:.3rem .4rem}button{padding:.35rem .8rem;cursor:pointer}
+.badge{font-weight:600}.mut{color:#667}</style></head><body>
+<h1>Omni-Ouro — EyD business dashboard</h1>
+<p class="mut">Site <code>__SITE__</code> · Demo build: this page ships
+unauthenticated because the playground is a sandbox. A production install
+puts it behind the business's own login, like any admin page.</p>
+
+<h2>Gates — adjust PoT requirements</h2>
+<table id="gates"><tr><th>Action</th><th>EyD required</th><th>Min PoT score (blank = any)</th><th>Since</th><th></th></tr></table>
+
+<h2>Requests — every agent, any time</h2>
+<p><input id="agentq" size="34" placeholder="agent_id (blank = all agents)">
+<button onclick="load()">Query</button></p>
+<table id="reqs"><tr><th>Time (UTC)</th><th>Agent</th><th>Action</th><th>Result</th><th>Classification</th><th>Receipt</th></tr></table>
+<div id="hist"></div>
+
+<script>
+async function load(){
+  const a = document.getElementById('agentq').value.trim();
+  const d = await (await fetch('/dashboard/data' + (a ? '?agent='+encodeURIComponent(a) : ''))).json();
+  document.getElementById('gates').innerHTML =
+    '<tr><th>Action</th><th>EyD required</th><th>Min PoT score (blank = any)</th><th>Since</th><th></th></tr>' +
+    Object.entries(d.gates).map(([k,g]) =>
+      `<tr><td><code>${k}</code></td><td>${g.eyd_required ? 'yes' : 'no (open)'}</td>` +
+      `<td><input id="ms-${k}" type="number" step="0.05" min="0" max="1" value="${g.min_score ?? ''}" placeholder="any"></td>` +
+      `<td>${g.since || ''}</td><td><button onclick="save('${k}')">Save</button></td></tr>`).join('');
+  document.getElementById('reqs').innerHTML =
+    '<tr><th>Time (UTC)</th><th>Agent</th><th>Action</th><th>Result</th><th>Classification</th><th>Receipt</th></tr>' +
+    (d.requests.slice().reverse().map(r =>
+      `<tr><td>${r.ts}</td><td><code>${(r.agent||'anonymous').slice(0,13)}…</code></td><td>${r.action}</td>` +
+      `<td>${r.result}</td><td class="badge">${r.classification || '—'}</td>` +
+      `<td>${r.receipt ? `<details><summary>view</summary><pre>${JSON.stringify(r.receipt,null,1)}</pre></details>` : '—'}</td></tr>`).join('')
+     || '<tr><td colspan="6">No requests yet.</td></tr>');
+  document.getElementById('hist').innerHTML = d.agent_history ?
+    `<h2>Clearing House history for <code>${a}</code> (all sites)</h2>` +
+    (d.agent_history.map(r =>
+      `<div><span class="badge">${r.classification}</span> ${r.ts} · site <code>${(r.site_id||'—').slice(0,13)}…</code> · score after: ${r.score_after ?? '—'}</div>`).join('')
+     || '<p>No receipts at the Clearing House for this agent.</p>') : '';
+}
+async function save(action){
+  const v = document.getElementById('ms-'+action).value;
+  await fetch('/dashboard/gates', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action, min_score: v === '' ? null : parseFloat(v)})});
+  load();
+}
+load();
+</script></body></html>"""
 
 
 if __name__ == "__main__":

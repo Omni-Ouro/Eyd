@@ -54,8 +54,9 @@ def gated(site, *, min_score=None, eyd_required=True, on_event=None,
           info_url=None, expectation_match=None, gate_since=None):
     """Decorate a FastAPI endpoint with the EyD gate.
 
-    on_event(agent_id, action_name, result), if given, fires on every
-    refusal and admission — the playground's request board hooks here.
+    on_event(agent_id, action_name, result, record_hash), if given,
+    fires on every refusal and admission — the playground's request
+    board hooks here.
     info_url, if given, is sent as the EyD-Info header on challenge
     responses so the agent's owner can find the credential; the refusal
     body itself stays blind.
@@ -66,24 +67,29 @@ def gated(site, *, min_score=None, eyd_required=True, on_event=None,
     gate_since, if given, stamps when this gate took effect; it rides
     the signed gate block on refusals so a Gated receipt shows which
     threshold, set by whom (this site), since when.
+    min_score and gate_since may be callables, resolved per request —
+    that's how a business dashboard adjusts gates at runtime without
+    redeploying.
     """
     def decorator(fn):
         @functools.wraps(fn)
         async def wrapper(request: Request, *args, **kwargs):
             record_hash_ = request.headers.get("EyD-Record")
             agent_id = request.headers.get("EyD-Agent")
+            threshold = min_score() if callable(min_score) else min_score
 
             def event(result: str) -> None:
                 if on_event:
-                    on_event(agent_id, fn.__name__, result)
+                    on_event(agent_id, fn.__name__, result, record_hash_)
 
             def refuse(reason: dict, challenge: bool = False) -> JSONResponse:
                 if record_hash_ and agent_id:
                     # Every refusal here is this gate's decision, so the
                     # signed report carries the gate that made it.
-                    gate = {"min_score": min_score, "reason": reason["reason"]}
-                    if gate_since:
-                        gate["since"] = gate_since
+                    gate = {"min_score": threshold, "reason": reason["reason"]}
+                    since = gate_since() if callable(gate_since) else gate_since
+                    if since:
+                        gate["since"] = since
                     site.report(record_hash_, agent_id, "declined",
                                 _body_bytes(reason), gate=gate)
                 event(f"refused: {reason['reason']}")
@@ -142,7 +148,7 @@ def gated(site, *, min_score=None, eyd_required=True, on_event=None,
                 return refuse(REFUSAL_UNKNOWN, challenge=True)
 
             # Per-action policy, checked on every gated request.
-            if not site.score_allows(agent_id, min_score):
+            if not site.score_allows(agent_id, threshold):
                 score = site.scores.get(agent_id)
                 reason = REFUSAL_UNKNOWN if score is None else REFUSAL_LOW
                 return refuse(reason)

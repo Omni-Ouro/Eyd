@@ -39,6 +39,25 @@ handling and a request board. Node/TypeScript sites use the mirror
 SDK in [../verifier/ts/](../verifier/ts/) with its `eydGate` Express
 middleware.
 
+## Business dashboard (`/dashboard`)
+
+What the business operates day to day, in [main.py](main.py):
+
+- **Adjust PoT requirements at runtime** — per-action minimum score,
+  saved from the page; the next request is checked against the new
+  value (`@gated` accepts a callable `min_score`), and the change is
+  stamped — that stamp is the `since` on later Gated receipts.
+- **Query any agent's requests** — this site's full request list,
+  filterable by `agent_id`, each row joined to the Proof Receipt the
+  Clearing House issued for it (viewable in place).
+- **Full Clearing House history for one agent** — every receipt that
+  agent holds, across all sites, via
+  `EyDSite.clearinghouse_receipts(agent_id)`.
+
+Demo build: the page is unauthenticated because the playground is a
+sandbox. A production install puts it behind the business's own
+login, like any admin page.
+
 ## Run it
 
 ```bash

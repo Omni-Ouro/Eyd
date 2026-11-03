@@ -23,8 +23,10 @@ import {
 } from "./verifier.js";
 
 export interface EyDGateOptions {
-  /** PoT threshold for this action; null/omitted = EyD required, any score. */
-  minScore?: number | null;
+  /** PoT threshold for this action; null/omitted = EyD required, any
+   *  score. May be a function, resolved per request, so a business
+   *  dashboard can adjust the gate at runtime. */
+  minScore?: number | null | (() => number | null);
   /** false = open action; EyD agents that show up still get receipts. */
   eydRequired?: boolean;
   /** Observability hook (the playground board uses it). */
@@ -63,7 +65,6 @@ function header(req: EyDRequestLike, name: string): string | undefined {
 }
 
 export function eydGate(site: EyDSite, opts: EyDGateOptions = {}) {
-  const minScore = opts.minScore ?? null;
   const eydRequired = opts.eydRequired ?? true;
 
   return async (
@@ -80,7 +81,8 @@ export function eydGate(site: EyDSite, opts: EyDGateOptions = {}) {
         // Every refusal here is this gate's decision, so the signed
         // report carries the gate that made it (classifies Gated).
         const gate: Record<string, unknown> = {
-          min_score: minScore, reason: reason.reason,
+          min_score: typeof opts.minScore === "function"
+            ? opts.minScore() : (opts.minScore ?? null), reason: reason.reason,
         };
         if (opts.gateSince) gate.since = opts.gateSince;
         await site
@@ -152,7 +154,9 @@ export function eydGate(site: EyDSite, opts: EyDGateOptions = {}) {
       }
 
       // Per-action policy, checked on every gated request.
-      if (!(await site.scoreAllows(agentId!, minScore))) {
+      const threshold = typeof opts.minScore === "function"
+        ? opts.minScore() : (opts.minScore ?? null);
+      if (!(await site.scoreAllows(agentId!, threshold))) {
         const score = site.scores.get(agentId!) ?? null;
         return refuse(score === null ? REFUSAL_UNKNOWN : REFUSAL_LOW);
       }

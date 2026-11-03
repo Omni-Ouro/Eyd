@@ -228,6 +228,21 @@ class EyDSite:
             "GET", f"{self.clearinghouse_url}/expectations/{record_hash_}")
         return body if status == 200 else None
 
+    def clearinghouse_receipts(self, agent_id: str | None = None,
+                               limit: int = 500) -> list[dict]:
+        """Receipts the Clearing House holds — every request an agent
+        ever made that produced one, across sites, with the receipt the
+        agent got back. Filtered to this site when agent_id is None is
+        not implied: pass agent_id to see one agent's full history."""
+        status, body = _request_json(
+            "GET", f"{self.clearinghouse_url}/receipts?limit={limit}")
+        if status != 200 or not body:
+            return []
+        out = body.get("receipts", [])
+        if agent_id:
+            out = [r for r in out if r.get("agent_id") == agent_id]
+        return out
+
     def report(self, record_hash_: str, agent_id: str, outcome: str,
                result: bytes | str | dict,
                expectation_match: bool | None = None,
