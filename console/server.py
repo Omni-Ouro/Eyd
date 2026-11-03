@@ -220,6 +220,12 @@ def index():
     return FileResponse(Path(__file__).parent / "index.html")
 
 
+@app.get("/eyd-card.jpg")
+def eyd_card():
+    return FileResponse(Path(__file__).parent / "eyd-card.jpg",
+                        media_type="image/jpeg")
+
+
 @app.get("/api/agents")
 def agents():
     out = []

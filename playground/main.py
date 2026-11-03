@@ -114,9 +114,15 @@ def make_app(*, clearinghouse_url: str = "http://127.0.0.1:8787",
             for r in reversed(app.state.requests[-15:]))
         return f"""<!doctype html>
 <html><head><meta charset="utf-8"><title>{COMPANY} — EyD playground</title>
-<style>body{{font-family:system-ui,sans-serif;max-width:760px;margin:2rem auto;padding:0 1rem}}
-table{{border-collapse:collapse;width:100%}}td,th{{border-bottom:1px solid #ddd;padding:.3rem .5rem;text-align:left}}
-code{{background:#f2f2f2;padding:.1rem .3rem}}</style></head><body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>body{{font-family:"Figtree",system-ui,sans-serif;background:#08090c;color:#e8ecf4;max-width:820px;margin:2rem auto;padding:0 1rem}}
+h1,h2{{font-family:"Syne",sans-serif}}h1{{font-size:28px;margin:.4rem 0}}h2{{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:#2fd4f5;margin-top:2rem}}
+table{{border-collapse:collapse;width:100%}}td,th{{border-bottom:1px solid #262b3a;padding:.4rem .5rem;text-align:left}}
+code{{background:#1a1d27;border:1px solid #262b3a;border-radius:5px;padding:.1rem .35rem;font-family:"JetBrains Mono",monospace;font-size:.85em}}
+a{{color:#2fd4f5}}.card{{width:min(460px,100%);border-radius:12px;border:1px solid #2b3348;box-shadow:0 6px 28px rgba(47,212,245,.18);display:block}}
+.mut{{color:#8b96ab}}</style></head><body>
+<img class="card" src="/eyd-card.jpg" alt="EyD — the AI Passport card">
 <h1>{COMPANY} — EyD beta playground</h1>
 <p>This is a real business endpoint running the EyD verifier SDK against the
 hosted <b>EyD Clearing House</b>. Point an EyD agent at it and test:</p>
@@ -131,6 +137,12 @@ Clearinghouse: <code>{site.clearinghouse_url}</code></p>
 <table><tr><th>time (UTC)</th><th>agent</th><th>action</th><th>result</th></tr>
 {rows or '<tr><td colspan="4">No requests yet — be the first.</td></tr>'}
 </table></body></html>"""
+
+    @app.get("/eyd-card.jpg")
+    def eyd_card():
+        from fastapi.responses import FileResponse
+        return FileResponse(Path(__file__).resolve().parent / "eyd-card.jpg",
+                            media_type="image/jpeg")
 
     @app.post("/revocation-notice")
     async def revocation_notice(request: Request):
@@ -258,11 +270,20 @@ async def _json_body(request: Request) -> dict:
 
 _DASHBOARD_HTML = """<!doctype html>
 <html><head><meta charset="utf-8"><title>Omni-Ouro — EyD business dashboard</title>
-<style>body{font-family:system-ui,sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem}
-table{border-collapse:collapse;width:100%;margin:.5rem 0 1.5rem}td,th{border-bottom:1px solid #ddd;padding:.3rem .5rem;text-align:left;vertical-align:top}
-code,pre{background:#f2f2f2;padding:.1rem .3rem}pre{padding:.6rem;overflow:auto;max-width:520px}
-input{padding:.3rem .4rem}button{padding:.35rem .8rem;cursor:pointer}
-.badge{font-weight:600}.mut{color:#667}</style></head><body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>body{font-family:"Figtree",system-ui,sans-serif;background:#08090c;color:#e8ecf4;max-width:960px;margin:2rem auto;padding:0 1rem}
+h1,h2{font-family:"Syne",sans-serif}h1{font-size:28px;margin:.4rem 0}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:#2fd4f5;margin-top:2rem}
+table{border-collapse:collapse;width:100%;margin:.5rem 0 1.5rem}td,th{border-bottom:1px solid #262b3a;padding:.4rem .5rem;text-align:left;vertical-align:top}
+code,pre{background:#1a1d27;border:1px solid #262b3a;border-radius:5px;padding:.1rem .35rem;font-family:"JetBrains Mono",monospace;font-size:.85em}
+pre{padding:.6rem;overflow:auto;max-width:520px}
+input{padding:.4rem .5rem;background:#13151c;color:#e8ecf4;border:1px solid #262b3a;border-radius:7px}
+button{padding:.4rem .9rem;cursor:pointer;background:#1a1d27;color:#e8ecf4;border:1px solid #262b3a;border-radius:7px}
+button:hover{border-color:#2fd4f5}
+.badge{font-weight:600;color:#2fd4f5}.mut{color:#8b96ab}
+.card{width:min(380px,100%);border-radius:12px;border:1px solid #2b3348;box-shadow:0 6px 28px rgba(47,212,245,.18);display:block}</style></head><body>
+<img class="card" src="/eyd-card.jpg" alt="EyD — the AI Passport card">
 <h1>Omni-Ouro — EyD business dashboard</h1>
 <p class="mut">Site <code>__SITE__</code> · Demo build: this page ships
 unauthenticated because the playground is a sandbox. A production install

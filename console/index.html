@@ -4,66 +4,96 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>EyD Judge Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root { --ink:#17202a; --mut:#5b6b7c; --line:#d7dee6; --bg:#f4f6f8; --card:#fff;
-          --green:#1a7f37; --red:#b91c1c; --amber:#b45309; --gray:#6b7280; --blue:#2563eb; }
+  /* EyD brand — Eyro system: deep ink, cyan dragon-card accent. */
+  :root { --ink:#e8ecf4; --mut:#8b96ab; --line:#262b3a; --bg:#08090c; --card:#13151c;
+          --panel:#1a1d27; --cyan:#2fd4f5; --blue:#4c6fff; --purple:#a855f7;
+          --green:#5fd38d; --red:#ff6b6b; --amber:#f5a623; --gray:#7e8699; }
   * { box-sizing: border-box; }
-  body { margin:0; font:14px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif;
+  body { margin:0; font:14px/1.45 "Figtree", -apple-system, "Segoe UI", Roboto, sans-serif;
          background:var(--bg); color:var(--ink); }
-  header { background:var(--ink); color:#fff; padding:10px 18px; display:flex;
-           justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap; }
-  header h1 { font-size:17px; margin:0; }
-  header .urls { font:12px ui-monospace, Consolas, monospace; color:#b9c6d4; }
+  header { background:linear-gradient(180deg,#0d0f14,#08090c); color:#fff; padding:14px 18px;
+           display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap;
+           border-bottom:1px solid var(--line); box-shadow:0 1px 0 rgba(47,212,245,.25); }
+  header .brand { display:flex; align-items:center; gap:14px; }
+  header img.mark { height:52px; border-radius:8px; border:1px solid var(--line); }
+  header h1 { font-family:"Syne",sans-serif; font-size:22px; font-weight:800; margin:0; letter-spacing:.01em; }
+  header h1 .accent { color:var(--cyan); }
+  header .tag { font-size:12px; color:var(--mut); margin-top:1px; }
+  header .urls { font:12px "JetBrains Mono", ui-monospace, Consolas, monospace; color:#7e8699; }
   main { display:grid; grid-template-columns:290px 1fr 1fr; gap:14px; padding:14px 18px; }
-  section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; }
-  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--mut); margin:0 0 10px; }
-  .agent-card { border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:10px;
-                cursor:pointer; background:#fff; }
-  .agent-card.selected { border-color:var(--blue); box-shadow:0 0 0 1px var(--blue); }
+  section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px;
+            box-shadow:0 4px 24px rgba(0,0,0,.35); }
+  h2 { font-family:"Syne",sans-serif; font-size:12px; font-weight:700; text-transform:uppercase;
+       letter-spacing:.1em; color:var(--cyan); margin:0 0 10px; }
+  .agent-card { border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:10px;
+                cursor:pointer; background:var(--panel); transition:border-color .15s, box-shadow .15s; }
+  .agent-card:hover { border-color:#3a4260; }
+  .agent-card.selected { border-color:var(--cyan); box-shadow:0 0 0 1px var(--cyan), 0 0 18px rgba(47,212,245,.18); }
   .agent-card .top { display:flex; justify-content:space-between; align-items:center; }
   .agent-card .name { font-weight:600; }
-  .chip { font-size:11px; padding:1px 7px; border-radius:99px; background:#e8eef4; color:var(--ink); }
-  .chip.none { background:#f3e2e2; }
-  .scorebar { height:8px; background:#e8eef4; border-radius:99px; margin:8px 0 4px; overflow:hidden; }
-  .scorebar > div { height:100%; background:var(--green); }
+  .chip { font-size:11px; padding:1px 7px; border-radius:99px; background:#232838; color:var(--ink);
+          border:1px solid var(--line); }
+  .chip.none { background:#3a2326; color:#ffb4b4; }
+  .scorebar { height:8px; background:#232838; border-radius:99px; margin:8px 0 4px; overflow:hidden; }
+  .scorebar > div { height:100%; background:linear-gradient(90deg,var(--blue),var(--cyan)); }
   .scoreline { display:flex; justify-content:space-between; font-size:12px; color:var(--mut); }
-  button { font:inherit; cursor:pointer; border:1px solid var(--line); background:#fff;
-           border-radius:7px; padding:6px 10px; }
-  button:hover { border-color:var(--blue); }
+  button { font:inherit; cursor:pointer; border:1px solid var(--line); background:var(--panel);
+           color:var(--ink); border-radius:8px; padding:6px 10px; transition:border-color .15s; }
+  button:hover { border-color:var(--cyan); }
   button:disabled { opacity:.5; cursor:default; }
   .boost { margin-top:8px; font-size:12px; }
   .msg { font-size:12px; color:var(--amber); min-height:16px; margin-top:4px; }
   .kv { display:grid; grid-template-columns:110px 1fr; gap:3px 10px; font-size:13px; margin-bottom:12px; }
-  .kv dt { color:var(--mut); } .kv dd { margin:0; font-family:ui-monospace, Consolas, monospace; word-break:break-all; }
+  .kv dt { color:var(--mut); } .kv dd { margin:0; font-family:"JetBrains Mono", ui-monospace, Consolas, monospace; word-break:break-all; }
   .actions { display:grid; gap:10px; }
   .act { text-align:left; padding:12px; }
+  .act:hover { box-shadow:0 0 14px rgba(47,212,245,.12); }
   .act .gate { display:block; font-size:12px; color:var(--mut); margin-top:2px; }
-  .badge { display:inline-block; padding:1px 9px; border-radius:99px; color:#fff; font-size:12px; font-weight:600; }
+  .badge { display:inline-block; padding:1px 9px; border-radius:99px; color:#0b0e14; font-size:12px; font-weight:700; }
   .b-Expected { background:var(--green); } .b-Unexpected { background:var(--amber); }
   .b-Declined { background:var(--red); } .b-Unverified { background:var(--gray); }
-  .b-Gated { background:var(--gray); }
-  .b-Deviated { background:#7c3aed; }
-  .notify { background:#fdf3e3; border:1px solid var(--amber); color:#7c4a03;
+  .b-Gated { background:#9aa7bd; }
+  .b-Deviated { background:var(--purple); color:#fff; }
+  .notify { background:#2e2410; border:1px solid var(--amber); color:#ffd9a0;
             border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:13px; }
-  .b-pending { background:var(--blue); }
-  pre { background:#0f1620; color:#d7e3f0; border-radius:8px; padding:10px; overflow:auto;
-        font:12px/1.5 ui-monospace, Consolas, monospace; white-space:pre-wrap; word-break:break-word; }
+  .b-pending { background:var(--blue); color:#fff; }
+  pre { background:#0d0f14; color:#c9e7f5; border:1px solid var(--line); border-radius:8px; padding:10px; overflow:auto;
+        font:12px/1.5 "JetBrains Mono", ui-monospace, Consolas, monospace; white-space:pre-wrap; word-break:break-word; }
   .gate-row { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
   .gate-row:last-child { border-bottom:0; }
   .gate-row .aname { width:70px; font-weight:600; }
-  .gate-row input[type=range] { width:130px; }
+  .gate-row input[type=range] { width:130px; accent-color:var(--cyan); }
   .switch { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--mut); }
   #ledger-wrap { padding:0 18px 18px; }
   table { width:100%; border-collapse:collapse; font-size:12.5px; }
   th, td { text-align:left; padding:5px 8px; border-bottom:1px solid var(--line); }
   th { color:var(--mut); font-weight:600; }
-  .mono { font-family:ui-monospace, Consolas, monospace; font-size:12px; }
+  .mono { font-family:"JetBrains Mono", ui-monospace, Consolas, monospace; font-size:12px; }
+  /* The EyD card — the AI Passport card art, with the selected agent's
+     real EyD number and PoT score laid over its printed lines. */
+  .eyd-card { position:relative; border-radius:12px; overflow:hidden; margin-bottom:12px;
+              border:1px solid #2b3348; box-shadow:0 6px 28px rgba(47,212,245,.15); }
+  .eyd-card img { display:block; width:100%; }
+  .eyd-card .field { position:absolute; left:51.5%; right:6%; color:#fff;
+                     font-family:"JetBrains Mono", ui-monospace, monospace; white-space:nowrap;
+                     overflow:hidden; text-overflow:ellipsis; text-shadow:0 1px 6px rgba(0,0,0,.9); }
+  .eyd-card .f-id { top:55%; font-size:clamp(10px,1.35vw,15px); letter-spacing:.04em; }
+  .eyd-card .f-score { top:79%; font-size:clamp(12px,1.7vw,19px); font-weight:500; color:var(--cyan); }
   @media (max-width: 900px) { main { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
 <header>
-  <h1>EyD — Judge Console</h1>
+  <div class="brand">
+    <img class="mark" src="/eyd-card.jpg" alt="EyD — the AI Passport card">
+    <div>
+      <h1>EyD <span class="accent">—</span> Judge Console</h1>
+      <div class="tag">Proof of Trust for AI agents · an Omni-Ouro / Eyro system</div>
+    </div>
+  </div>
   <div class="urls" id="urls">site: … · clearinghouse: …</div>
 </header>
 
@@ -75,6 +105,7 @@
 
   <section>
     <h2>Selected agent</h2>
+    <div id="eyd-card-slot"></div>
     <dl class="kv" id="detail"></dl>
     <div id="passport-ctl" style="margin-bottom:12px"></div>
     <h2>Give the agent a task</h2>
@@ -155,6 +186,17 @@ function renderDetail() {
   const a = agents.find(x => x.key === selected);
   if (!a) return;
   const p = a.passport_detail;
+  $("#eyd-card-slot").innerHTML = a.agent_id ? `
+    <div class="eyd-card">
+      <img src="/eyd-card.jpg" alt="EyD AI Passport card for the selected agent">
+      <span class="field f-id">${esc(a.agent_id)}</span>
+      <span class="field f-score">${a.score == null ? "unknown" : a.score.toFixed(2)}</span>
+    </div>` : `
+    <div class="eyd-card">
+      <img src="/eyd-card.jpg" alt="EyD AI Passport card" style="filter:grayscale(.7) brightness(.55)">
+      <span class="field f-id" style="color:var(--amber)">no EyD identity</span>
+      <span class="field f-score">—</span>
+    </div>`;
   $("#detail").innerHTML = `
     ${a.notification ? `<div class="notify"><b>Owner notification.</b> ${esc(a.notification.replace(a.agent_id || "", a.name))}</div>` : ""}
     <dt>agent_id</dt><dd>${a.agent_id || "— (no EyD identity)"}</dd>
