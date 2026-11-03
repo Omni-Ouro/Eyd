@@ -122,7 +122,6 @@ table{{border-collapse:collapse;width:100%}}td,th{{border-bottom:1px solid #262b
 code{{background:#1a1d27;border:1px solid #262b3a;border-radius:5px;padding:.1rem .35rem;font-family:"JetBrains Mono",monospace;font-size:.85em}}
 a{{color:#2fd4f5}}.card{{width:min(460px,100%);border-radius:12px;border:1px solid #2b3348;box-shadow:0 6px 28px rgba(47,212,245,.18);display:block}}
 .mut{{color:#8b96ab}}</style></head><body>
-<img class="card" src="/eyd-card.jpg" alt="EyD — the AI Passport card">
 <h1>{COMPANY} — EyD beta playground</h1>
 <p>This is a real business endpoint running the EyD verifier SDK against the
 hosted <b>EyD Clearing House</b>. Point an EyD agent at it and test:</p>
@@ -283,7 +282,6 @@ button{padding:.4rem .9rem;cursor:pointer;background:#1a1d27;color:#e8ecf4;borde
 button:hover{border-color:#2fd4f5}
 .badge{font-weight:600;color:#2fd4f5}.mut{color:#8b96ab}
 .card{width:min(380px,100%);border-radius:12px;border:1px solid #2b3348;box-shadow:0 6px 28px rgba(47,212,245,.18);display:block}</style></head><body>
-<img class="card" src="/eyd-card.jpg" alt="EyD — the AI Passport card">
 <h1>Omni-Ouro — EyD business dashboard</h1>
 <p class="mut">Site <code>__SITE__</code> · Demo build: this page ships
 unauthenticated because the playground is a sandbox. A production install
