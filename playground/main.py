@@ -53,6 +53,7 @@ GATES = {
     "deck": {"eyd_required": True, "min_score": None},
     "meeting": {"eyd_required": True, "min_score": 0.8},
 }
+GATE_CHANGE_TTL = 900  # dashboard gate changes auto-expire after 15 min
 
 
 def _site_identity() -> Identity:
@@ -84,6 +85,17 @@ def make_app(*, clearinghouse_url: str = "http://127.0.0.1:8787",
     from eyd.records import utc_now as _now
     app.state.gates = {k: {**v, "since": _now()} for k, v in GATES.items()}
 
+    def _effective(action: str) -> dict:
+        """The gate as it stands now: a dashboard change older than
+        GATE_CHANGE_TTL has expired back to the code defaults."""
+        import time as _time
+        gate = app.state.gates[action]
+        changed = gate.get("changed_epoch")
+        if changed and _time.time() - changed > GATE_CHANGE_TTL:
+            gate = {**GATES[action], "since": _now()}
+            app.state.gates[action] = gate
+        return gate
+
     def board(agent, action, result, record_hash=None):
         from eyd.records import utc_now
         app.state.requests.append(
@@ -111,7 +123,7 @@ hosted <b>EyD Clearing House</b>. Point an EyD agent at it and test:</p>
 <table><tr><th>Action</th><th>Gate</th></tr>
 <tr><td><code>GET /search</code></td><td>open — EyD agents still earn receipts</td></tr>
 <tr><td><code>POST /deck</code></td><td>EyD required, any PoT score</td></tr>
-<tr><td><code>POST /meeting</code></td><td>EyD required, PoT score &ge; 0.8</td></tr></table>
+<tr><td><code>POST /meeting</code></td><td>EyD required, PoT score &ge; {_effective('meeting')['min_score']} (live value; dashboard changes auto-expire after 15 min)</td></tr></table>
 <p>Everything is sandboxed: requests are recorded, nothing is emailed, no
 calendar invite is sent. Site identity: <code>{site_identity.id}</code> ·
 Clearinghouse: <code>{site.clearinghouse_url}</code></p>
@@ -158,16 +170,27 @@ Clearinghouse: <code>{site.clearinghouse_url}</code></p>
             history = site.clearinghouse_receipts(agent)
         return {"company": COMPANY, "site_id": site_identity.id,
                 "clearinghouse": site.clearinghouse_url,
-                "gates": app.state.gates, "requests": rows,
+                "gates": {k: _effective(k) for k in app.state.gates}, "requests": rows,
                 "agent_history": history,
                 "scores_seen": site.scores}
 
     @app.post("/dashboard/gates")
     async def dashboard_gates(request: Request):
         """Adjust a gate at runtime: the next request is checked
-        against the new value, and Gated receipts stamp the change."""
+        against the new value, and Gated receipts stamp the change.
+        This is a test playground, so a change is a test change: it
+        auto-expires back to the defaults after GATE_CHANGE_TTL
+        seconds, so no tester inherits another tester's moved gate
+        for long. (A production install puts this endpoint behind
+        the business's own login instead.)"""
         payload = await _json_body(request)
         action = payload.get("action")
+        import time as _time
+        from eyd.records import utc_now
+        if payload.get("reset"):
+            app.state.gates = {k: {**v, "since": utc_now()}
+                               for k, v in GATES.items()}
+            return {"gates": app.state.gates}
         if action not in app.state.gates:
             return {"error": "unknown action"}
         gate = app.state.gates[action]
@@ -175,8 +198,8 @@ Clearinghouse: <code>{site.clearinghouse_url}</code></p>
             gate["min_score"] = payload["min_score"]  # float 0..1, null = any
         if "eyd_required" in payload:
             gate["eyd_required"] = bool(payload["eyd_required"])
-        from eyd.records import utc_now
         gate["since"] = utc_now()
+        gate["changed_epoch"] = _time.time()
         return {"gates": app.state.gates}
 
     @app.get("/dashboard", response_class=HTMLResponse)
@@ -193,16 +216,16 @@ Clearinghouse: <code>{site.clearinghouse_url}</code></p>
         return _action_body("search", {"need": q})
 
     @app.post("/deck")
-    @gated(site, min_score=lambda: app.state.gates["deck"]["min_score"],
+    @gated(site, min_score=lambda: _effective("deck")["min_score"],
            on_event=board, info_url=callback_url, expectation_match=True,
-           gate_since=lambda: app.state.gates["deck"]["since"])
+           gate_since=lambda: _effective("deck")["since"])
     async def deck(request: Request):
         return _action_body("deck", await _json_body(request))
 
     @app.post("/meeting")
-    @gated(site, min_score=lambda: app.state.gates["meeting"]["min_score"],
+    @gated(site, min_score=lambda: _effective("meeting")["min_score"],
            on_event=board, info_url=callback_url, expectation_match=True,
-           gate_since=lambda: app.state.gates["meeting"]["since"])
+           gate_since=lambda: _effective("meeting")["since"])
     async def meeting(request: Request):
         return _action_body("meeting", await _json_body(request))
 
@@ -246,6 +269,13 @@ unauthenticated because the playground is a sandbox. A production install
 puts it behind the business's own login, like any admin page.</p>
 
 <h2>Gates — adjust PoT requirements</h2>
+<p class="mut">This is a test playground: anyone may move a gate, the
+change applies to every agent on the next request, and it
+<b>auto-expires back to defaults after 15 minutes</b> — the
+<code>since</code> stamp below (and on later Gated receipts) shows when
+it was last moved. A production install puts this page behind the
+business's own login instead.</p>
+<p><button onclick="resetGates()">Reset gates to defaults now</button> <span id="gmsg"></span></p>
 <table id="gates"><tr><th>Action</th><th>EyD required</th><th>Min PoT score (blank = any)</th><th>Since</th><th></th></tr></table>
 
 <h2>Requests — every agent, any time</h2>
@@ -279,8 +309,19 @@ async function load(){
 }
 async function save(action){
   const v = document.getElementById('ms-'+action).value;
-  await fetch('/dashboard/gates', {method:'POST', headers:{'Content-Type':'application/json'},
+  const r = await fetch('/dashboard/gates', {method:'POST',
+    headers:{'Content-Type':'application/json'},
     body: JSON.stringify({action, min_score: v === '' ? null : parseFloat(v)})});
+  const d = await r.json();
+  document.getElementById('gmsg').textContent = d.error ? d.error : 'saved';
+  load();
+}
+async function resetGates(){
+  const r = await fetch('/dashboard/gates', {method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({reset: true})});
+  const d = await r.json();
+  document.getElementById('gmsg').textContent = d.error ? d.error : 'reset to defaults';
   load();
 }
 load();
