@@ -22,6 +22,17 @@ Startup track. Design doc: [EYD_DESIGN.md](EYD_DESIGN.md). Proof format:
 [docs/market-fit.md](docs/market-fit.md). Build disclosure:
 [How this repo was built](#how-this-repo-was-built).
 
+## Try the live deployment
+
+- **Live hosted Clearing House:** https://clearinghouse.omni-ouro.com
+  (`/` returns the service name, version, Clearing House id, and the
+  expectation model in use)
+- **Live hosted business playground:** https://eyd.omni-ouro.com —
+  a real business install of the verifier SDK, with its operator
+  dashboard at https://eyd.omni-ouro.com/dashboard
+- **Run the judge console locally:** see
+  [Run the demo locally](#run-the-demo-locally) below.
+
 Prerequisites: Python ≥ 3.11 (Node ≥ 18 only for the TypeScript
 verifier). Commands below are bash — macOS/Linux, or Git Bash/WSL on
 Windows.
@@ -178,6 +189,52 @@ is a local demo and is not part of it. Runbook:
 stack also starts in one command (`scripts/start-all.sh`,
 `scripts/stop-all.sh` to stop; console binds localhost unless
 `HOST=0.0.0.0` is set).
+
+## Meta AI tooling
+
+EyD uses Meta models in three distinct places; no other model's output
+is a runtime dependency, and no classification or score ever depends on
+a model.
+
+- **Muse Spark, open weights (in the product).** The Clearing House's
+  expectation vector ([clearinghouse/expectations.py](clearinghouse/expectations.py))
+  runs `meta-models/muse-spark-open-1026` — open-weight Muse Spark,
+  served through **Baseten** — at intent time. From the declared verb,
+  tool, and target alone (never arguments, never result content), it
+  pre-registers a one-sentence expected-outcome sketch against the
+  Action Record; the sketch is bound into the signed Proof Receipt and
+  the site attests whether its result matched. The hosted beta's `/`
+  endpoint reports this model live (`expectation_model`). Advisory
+  only: if the gateway is unreachable, expectations fail open and
+  receipts still issue.
+- **Muse (in the demo).** The acting agents in the judge console and
+  [agent-demo/agent.py](agent-demo/agent.py) are live Meta-model tool
+  calls (`muse-wonder-1.0` via the Meta model gateway). The tool calls
+  being signed, gated, and classified — including the Bad Agent routing
+  a payment task to an email tool and being classified Deviated — are
+  the model's own choices, not scripted responses.
+- **Muse Wonder 1.0 (to build it).** The development coding agent was
+  Meta's `muse-wonder-1.0` in an agentic coding harness, under human
+  direction; see [How this repo was built](#how-this-repo-was-built)
+  for the full disclosure of what was human and what was model.
+
+## Evaluation and benchmarks
+
+Measured results, all reproducible from this repo:
+
+| Evaluation | Result | How to reproduce |
+|---|---|---|
+| ServiceNow AI Passport conformance, verifier role | **81/81** (re-run 2026-11-01) | `passport-interop/` against ServiceNow's published suite |
+| ServiceNow AI Passport conformance, caller role | **74/74** (re-run 2026-11-01) | same harness, caller adapter |
+| Python test suite | **56 passed** | `pytest` (also runs in CI) |
+| TypeScript verifier suite | **16 passed** | `npm --prefix verifier/ts test` |
+| Judge console end-to-end validation | **0 failures** | `python scripts/validate_console.py` on a fresh stack: real model calls through refusal, Gated, Expected, Unexpected, and Deviated paths |
+| Canonicalization | spec vector in [spec/PROOF_v0.md](spec/PROOF_v0.md) verified in tests | `pytest tests/test_canonical.py` |
+
+The console validation script doubles as the evaluation harness: it
+drives the live system (real model, real gates, real Clearing House)
+and asserts the classification and score after every action, rather
+than mocking the path it claims to test.
 
 ## Market fit
 
