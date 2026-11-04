@@ -2,6 +2,27 @@
 
 **Agents act on your behalf. Nobody can prove what they did.**
 
+## Submission overview — Meta Global AI Developer Hackathon 2026
+
+- **Track & problem statement:** Startup · **Push the Frontier**
+- **Provenance:** Built from scratch during the hackathon window,
+  Oct 26 – Nov 4, 2026. The commit history starts Oct 26; no code
+  predates it.
+- **Demo video (2:59):** https://www.youtube.com/watch?v=5X7RR0bsljE
+- **Live deployment:** Clearing House
+  https://clearinghouse.omni-ouro.com · business playground and
+  dashboard https://eyd.omni-ouro.com
+- **Meta AI runtime models:** open-weight Muse Spark
+  (`meta-models/muse-spark-open-1026`, served via Baseten) runs the
+  Clearing House expectation vector; Muse (`muse-wonder-1.0` via the
+  Meta model gateway) drives the acting demo agents. Details:
+  [Meta AI tooling](#meta-ai-tooling).
+- **Bonus category targeted:** Best Agentic Use-Case.
+- **Keyless verification (no API key needed):** `pytest` (56 tests),
+  and the hosted-beta walk `python examples/beta_agent.py` against the
+  live deployment above. The judge console's live model calls need a
+  model gateway token (see `.env.example`).
+
 > "Govern the event, not the technology." — Peter Evans-Greenwood
 
 EyD doesn't govern the agent or the model; it records the event and
