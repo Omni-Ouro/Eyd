@@ -2,6 +2,12 @@
 
 **Agents act on your behalf. Nobody can prove what they did.**
 
+[![Demo video](https://img.shields.io/badge/demo%20video-2%3A59-blue)](https://www.youtube.com/watch?v=5X7RR0bsljE)
+[![Live playground](https://img.shields.io/badge/live-eyd.omni--ouro.com-brightgreen)](https://eyd.omni-ouro.com)
+[![Clearing House](https://img.shields.io/badge/clearinghouse-omni--ouro.com-brightgreen)](https://clearinghouse.omni-ouro.com)
+[![Tests](https://github.com/Omni-Ouro/Eyd/actions/workflows/test.yml/badge.svg)](https://github.com/Omni-Ouro/Eyd/actions/workflows/test.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
 ## Submission overview — Meta Global AI Developer Hackathon 2026
 
 - **Track & problem statement:** Startup · **Push the Frontier**
