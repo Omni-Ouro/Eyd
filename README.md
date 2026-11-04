@@ -17,7 +17,8 @@
 - **Demo video (2:59):** https://www.youtube.com/watch?v=5X7RR0bsljE
 - **Live deployment:** Clearing House
   https://clearinghouse.omni-ouro.com · business playground and
-  dashboard https://eyd.omni-ouro.com
+  dashboard https://eyd.omni-ouro.com — the dashboard is open in the
+  browser, no install or account.
 - **Meta AI runtime models:** open-weight Muse Spark
   (`meta-models/muse-spark-open-1026`, served via Baseten) runs the
   Clearing House expectation vector; Muse (`muse-wonder-1.0` via the
@@ -57,7 +58,8 @@ Startup track. Design doc: [EYD_DESIGN.md](EYD_DESIGN.md). Proof format:
   expectation model in use)
 - **Live hosted business playground:** https://eyd.omni-ouro.com —
   a real business install of the verifier SDK, with its operator
-  dashboard at https://eyd.omni-ouro.com/dashboard
+  dashboard at https://eyd.omni-ouro.com/dashboard (open, no account:
+  adjust gates, query agents, read receipts right in the browser)
 - **Run the judge console locally:** see
   [Run the demo locally](#run-the-demo-locally) below.
 
