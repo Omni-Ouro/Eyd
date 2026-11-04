@@ -24,6 +24,7 @@ Startup track. Design doc: [EYD_DESIGN.md](EYD_DESIGN.md). Proof format:
 
 ## Try the live deployment
 
+- **Demo video (2:59):** https://www.youtube.com/watch?v=5X7RR0bsljE
 - **Live hosted Clearing House:** https://clearinghouse.omni-ouro.com
   (`/` returns the service name, version, Clearing House id, and the
   expectation model in use)
