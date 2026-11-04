@@ -273,13 +273,14 @@ async function renderLedger() {
 
 async function act(action) {
   busy = true; renderDetail();
-  $("#happened").innerHTML = `<p><span class="badge b-pending">running</span>&nbsp; tasking Agent ${selected}… (one model call)</p>`;
+  $("#happened").innerHTML = `<p><span class="badge b-pending">running</span>&nbsp; live Meta Muse call — tasking Agent ${selected}…</p>`;
   const r = await api("/api/act", {agent: selected, action});
   busy = false;
   if (r.error) { $("#happened").innerHTML = `<pre>${esc(r.error)}</pre>`; renderDetail(); return; }
   const rec = r.receipt;
   $("#happened").innerHTML = `
     <p><b>Task:</b> ${esc(r.task)}</p>
+    ${r.model ? `<p><b>Live Meta model call:</b> Muse · <span class="mono">${esc(r.model)}</span>${r.model_ms != null ? ` · ${(r.model_ms / 1000).toFixed(1)}s` : ""} · the tool below was chosen by the model</p>` : ""}
     ${r.agent_said ? `<p><b>Agent:</b> ${esc(r.agent_said)}</p>` : ""}
     ${r.tool_call ? `<p><b>Request as the agent made it</b></p>
       <pre>${esc(r.request_line)}\n${esc(r.tool_call.name)}(${esc(JSON.stringify(r.tool_call.input))})</pre>` : ""}
@@ -287,7 +288,9 @@ async function act(action) {
     <pre>${esc(typeof r.response_body === "string" ? r.response_body : JSON.stringify(r.response_body, null, 2))}</pre>
     <p><b>Proof Receipt:</b> ${rec ? `${badge(rec.classification)}
       <span class="mono">${short(rec.record_hash)}</span> <span style="color:var(--mut)">pending → awaiting counterparty → classified</span>`
-      : `<span style="color:var(--mut)">none — ${esc(r.note || "no receipt issued")}</span>`}</p>`;
+      : `<span style="color:var(--mut)">none — ${esc(r.note || "no receipt issued")}</span>`}</p>
+    ${rec && rec.expectation ? `<p><b>Pre-registered expectation</b> <span style="color:var(--mut)">(Meta model, before execution)</span><br>
+      <span class="mono">${esc(rec.expectation.model || "")}</span> · ${esc(rec.expectation.category || "")} — ${esc(rec.expectation.sketch || "")}</p>` : ""}`;
   await refresh();
 }
 

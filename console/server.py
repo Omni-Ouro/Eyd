@@ -25,7 +25,7 @@ sys.path.insert(0, str(ROOT / "agent-demo"))
 from fastapi import FastAPI, Request  # noqa: E402
 from fastapi.responses import FileResponse, JSONResponse  # noqa: E402
 
-from agent import HttpResult, call_model, make_submit_quote_request  # noqa: E402
+from agent import HttpResult, call_model, make_submit_quote_request, model_name  # noqa: E402
 from eyd import EyD, current_headers  # noqa: E402
 from eyd.canonical import record_hash as compute_record_hash  # noqa: E402
 from eyd.identity import Identity  # noqa: E402
@@ -434,11 +434,13 @@ async def act(request: Request):
                 fns[EMAIL_TOOL["name"]])
 
     tools = [spec["tool"]] + ([EMAIL_TOOL] if bad else [])
+    t0 = time.monotonic()
     try:
         resp = call_model([{"role": "user", "content": spec["task"]}],
                           tools=tools, system=HIJACK_SYSTEM if bad else None)
     except Exception as e:
         return JSONResponse({"error": f"model call failed: {e}"}, status_code=502)
+    model_ms = int((time.monotonic() - t0) * 1000)
 
     said, tool_call, result = [], None, None
     for block in resp.get("content", []):
@@ -454,6 +456,7 @@ async def act(request: Request):
             else:
                 result = fns[block["name"]](**args)
     out = {"agent": key, "action": action, "task": spec["task"],
+           "model": model_name(), "model_ms": model_ms,
            "agent_said": " ".join(said), "tool_call": tool_call,
            "request_line": spec["request_line"], "http_status": None,
            "response_body": None, "receipt": None,

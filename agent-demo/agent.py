@@ -45,6 +45,11 @@ class HttpResult:
     headers: dict = field(default_factory=dict)
 
 
+def model_name() -> str:
+    """The Meta model the gateway will serve for agent calls."""
+    return os.environ.get("ANTHROPIC_MODEL", "muse-wonder-1.0")
+
+
 def call_model(messages: list[dict], tool: dict | None = None, *,
                tools: list[dict] | None = None, system: str | None = None) -> dict:
     # The Meta model gateway (ANTHROPIC_* names accepted as fallback —
@@ -53,7 +58,7 @@ def call_model(messages: list[dict], tool: dict | None = None, *,
             or os.environ["ANTHROPIC_BASE_URL"]).rstrip("/")
     token = (os.environ.get("MODEL_GATEWAY_TOKEN")
              or os.environ.get("ANTHROPIC_AUTH_TOKEN", ""))
-    payload = {"model": os.environ.get("ANTHROPIC_MODEL", "muse-wonder-1.0"),
+    payload = {"model": model_name(),
                "max_tokens": 4096, "tools": tools or [tool or TOOL_SCHEMA],
                "messages": messages}
     if system:
